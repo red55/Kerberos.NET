@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<asn:Sequence
+  xmlns:asn="http://schemas.dot.net/asnxml/201808/"
+  name="Rfc3244ChPwData"
+  namespace="Kerberos.NET.Entities.Rfc3244">
+    <!--
+        ChangePasswdData ::=  SEQUENCE {
+                          newpasswd[0]   OCTET STRING,
+                          targname[1]    PrincipalName OPTIONAL,
+                          targrealm[2]   Realm OPTIONAL
+                          }
+   }  -->    
+    <asn:OctetString name="NewPassword" explicitTag="0" optional="false" />
+    <asn:AsnType name="TargetName" typeName="KrbPrincipalName" explicitTag="1" optional="true" />
+    <asn:GeneralString name="TargetRealm" explicitTag="2" optional="true" />
+
+</asn:Sequence>
