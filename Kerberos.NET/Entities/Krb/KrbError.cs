@@ -22,13 +22,23 @@ namespace Kerberos.NET.Entities
 
         private static readonly Asn1Tag KrbErrorTag = new Asn1Tag(TagClass.Application, 30);
 
+        // The "can" semantics implies the method throws nothing.
+        // We can decode or we can't. 
         public static bool CanDecode(ReadOnlyMemory<byte> encoded)
         {
-            var reader = new AsnReader(encoded, AsnEncodingRules.DER);
+            try
+            {
+                var reader = new AsnReader (encoded, AsnEncodingRules.DER);
 
-            var tag = reader.ReadTagAndLength(out _, out _);
+                var tag = reader.ReadTagAndLength (out _, out _);
 
-            return tag.HasSameClassAndValue(KrbErrorTag);
+                return tag.HasSameClassAndValue (KrbErrorTag);
+
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public void StampServerTime()
