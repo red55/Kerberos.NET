@@ -510,6 +510,15 @@
   <data name="CommandLine_KList_TicketEType" xml:space="preserve">
     <value>Ticket EType</value>
   </data>
+  <data name="CommandLine_KPasswd_NewPassPrompt" xml:space="preserve">
+    <value>New password for {0}:</value>
+  </data>
+  <data name="CommandLine_KPasswd_NewPassVerifyPrompt" xml:space="preserve">
+    <value>Verify new password for {0}:</value>
+  </data>
+  <data name="CommandLine_KPasswd_PassDoesNotMatch" xml:space="preserve">
+    <value>New password and it's confirmation does not match.</value>
+  </data>
   <data name="CommandLine_UnknownCommand" xml:space="preserve">
     <value>The command '{0}' could not be found.</value>
   </data>

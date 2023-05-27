@@ -1240,6 +1240,33 @@ namespace Kerberos.NET.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to New password for {0}:.
+        /// </summary>
+        internal static string CommandLine_KPasswd_NewPassPrompt {
+            get {
+                return ResourceManager.GetString("CommandLine_KPasswd_NewPassPrompt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Verify new password for {0}:.
+        /// </summary>
+        internal static string CommandLine_KPasswd_NewPassVerifyPrompt {
+            get {
+                return ResourceManager.GetString("CommandLine_KPasswd_NewPassVerifyPrompt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New password and it&apos;s confirmation does not match..
+        /// </summary>
+        internal static string CommandLine_KPasswd_PassDoesNotMatch {
+            get {
+                return ResourceManager.GetString("CommandLine_KPasswd_PassDoesNotMatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The command &apos;{0}&apos; could not be found..
         /// </summary>
         internal static string CommandLine_UnknownCommand {
