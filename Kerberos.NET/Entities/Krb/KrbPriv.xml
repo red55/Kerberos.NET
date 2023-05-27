@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<asn:Sequence
+  xmlns:asn="http://schemas.dot.net/asnxml/201808/"
+  name="KrbPriv"
+  namespace="Kerberos.NET.Entities" explicitTag="21">
+    <!--
+        KRB-PRIV ::=         [APPLICATION 21] SEQUENCE {
+                pvno[0]                   INTEGER,
+                msg-type[1]               INTEGER,
+                enc-part[3]               EncryptedData
+        }-->
+
+    <asn:Integer name="ProtocolVersionNumber" explicitTag="0" backingType="int" />
+    <asn:Integer name="MessageType" explicitTag="1" backingType="enum" enumType="MessageType" />
+    <asn:AsnType name="EncryptedPart" explicitTag="3" typeName="KrbEncryptedData" />
+
+</asn:Sequence>
