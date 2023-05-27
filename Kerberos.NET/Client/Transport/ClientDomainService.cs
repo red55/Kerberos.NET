@@ -13,12 +13,13 @@ namespace Kerberos.NET.Transport
 {
     public class ClientDomainService
     {
-        public ClientDomainService(ILoggerFactory logger)
+        public ClientDomainService(ILoggerFactory loggerFactory)
         {
-            this.logger = logger.CreateLoggerSafe<ClientDomainService>();
+            this.logger = loggerFactory.CreateLoggerSafe<ClientDomainService>();
         }
 
         internal const int DefaultKerberosPort = 88;
+        internal const int DefaultKpasswdPort  = 464;
 
         private static readonly Task CacheCleanup;
 
@@ -55,7 +56,32 @@ namespace Kerberos.NET.Transport
 
         public virtual async Task<IEnumerable<DnsRecord>> LocateKdc(string domain, string servicePrefix)
         {
-            var results = (await this.Query(domain, servicePrefix)).Where(r => r.Type == DnsRecordType.SRV);
+            return await LocateKrbServers (domain, servicePrefix);
+        }
+
+        internal record KrbSvcQuery {
+            internal int defaultPort;
+            internal IEnumerable<string> candidates;
+            private static readonly KrbSvcQuery _Empty = new () { defaultPort = DefaultKerberosPort, candidates = Enumerable.Empty<string>() };
+            internal static KrbSvcQuery Empty => _Empty;
+        };
+
+        
+
+        public virtual async Task<IEnumerable<DnsRecord>> LocateKrbServers(string domain, string servicePrefix)
+        {
+            var q = KrbSvcQuery.Empty;
+
+            if (Configuration.Realms.TryGetValue (domain, out var config))
+            {
+                q = servicePrefix.Substring (0, servicePrefix.IndexOf ('.')) switch
+                {
+                    "_kpasswd" => new () { candidates = config.KPasswdServer ?? config.AdminServer, defaultPort = DefaultKpasswdPort },
+                    _ => q with { candidates = config.Kdc }
+                };
+            }
+
+            var results = (await this.Query(domain, servicePrefix, q.candidates, q.defaultPort)).Where(r => r.Type == DnsRecordType.SRV);
 
             results = results.Where(s => !this.negativeCache.TryGetValue(s.Target, out DnsRecord record) || record.Expired);
 
@@ -107,26 +133,37 @@ namespace Kerberos.NET.Transport
                 kdcs.Clear();
             }
         }
-
-        protected virtual async Task<IEnumerable<DnsRecord>> Query(string domain, string servicePrefix)
+/*        protected virtual async Task<IEnumerable<DnsRecord>> Query(string domain, string servicePrefix)
         {
-            var records = new List<DnsRecord>();
 
-            if (this.pinnedKdcs.TryGetValue(domain, out HashSet<string> kdcs))
+            return await Query(domain, servicePrefix, kdc, DefaultKerberosPort);
+
+        }*/
+        protected virtual async Task<IEnumerable<DnsRecord>> Query(string domain, string servicePrefix, IEnumerable<string> serverCandidates, int defaultKerberosPort)
+        {
+            var records = new List<DnsRecord> ();
+
+            if (this.pinnedKdcs.TryGetValue (domain, out HashSet<string> kdcs))
             {
-                records.AddRange(kdcs.Select(k => ParseKdcEntryAsSrvRecord(k, domain, servicePrefix)).Where(k => k != null));
+                records.AddRange (kdcs.Select (k => ParseKdcEntryAsSrvRecord (k, domain, servicePrefix, defaultKerberosPort)).Where (k => k != null));
             }
 
-            if (this.Configuration.Realms.TryGetValue(domain, out Krb5RealmConfig config))
+            if (serverCandidates != null)
             {
-                records.AddRange(config.Kdc.Select(k => ParseKdcEntryAsSrvRecord(k, domain, servicePrefix)).Where(k => k != null));
-            }
+                records.AddRange (serverCandidates.Select (k => ParseKdcEntryAsSrvRecord (k, domain, servicePrefix, defaultKerberosPort)).Where (k => k != null));
+            }            
 
-            if (this.Configuration.Defaults.DnsLookupKdc)
+            if (this.Configuration.Defaults.DnsLookupKdc && servicePrefix.StartsWith("_kerberos") || servicePrefix.StartsWith ("_kpasswd")) // allow DNS queries for RF3244 protocol
             {
                 try
                 {
-                    await this.QueryDns(domain, servicePrefix, records);
+                    var dnsRecords = (await this.QueryDns (domain, servicePrefix));
+                    foreach (var r in dnsRecords.Where (q => q.Port <= 0)) //fix bad SRV records with wrong port
+                    {
+                        r.Port = defaultKerberosPort;                        
+                    }
+                    records.AddRange(dnsRecords);
+                    
                 }
                 catch (DnsNotSupportedException ex)
                 {
@@ -137,9 +174,10 @@ namespace Kerberos.NET.Transport
             return records;
         }
 
-        private async Task QueryDns(string domain, string servicePrefix, List<DnsRecord> records)
+        private async Task<IEnumerable<DnsRecord>> QueryDns(string domain, string servicePrefix)
         {
             var lookup = Invariant($"{servicePrefix}.{domain}");
+            var dnsResults = Enumerable.Empty<DnsRecord>();
 
             bool skipLookup = false;
 
@@ -159,20 +197,24 @@ namespace Kerberos.NET.Transport
             {
                 this.logger.LogDebug("Querying DNS {Lookup}", lookup);
 
-                var dnsResults = await DnsQuery.QuerySrv(lookup);
+                dnsResults = await DnsQuery.QuerySrv(lookup);
 
                 if (!dnsResults.Any())
                 {
                     DomainServiceNegativeCache[lookup] = DateTimeOffset.UtcNow.AddMinutes(5);
 
                     this.logger.LogDebug("DNS failed {Lookup} so negative caching", lookup);
-                }
-
-                records.AddRange(dnsResults);
+                }                
             }
+
+            return dnsResults;
         }
 
         private static DnsRecord ParseKdcEntryAsSrvRecord(string kdc, string realm, string servicePrefix)
+        {
+            return ParseKdcEntryAsSrvRecord (kdc, realm, servicePrefix, DefaultKerberosPort);
+        }
+        private static DnsRecord ParseKdcEntryAsSrvRecord(string kdc, string realm, string servicePrefix, int defaultKerberosPort)
         {
             if (IsUri(kdc))
             {
@@ -199,7 +241,7 @@ namespace Kerberos.NET.Transport
             }
             else
             {
-                record.Port = DefaultKerberosPort;
+                record.Port = defaultKerberosPort;
             }
 
             return record;

@@ -5,12 +5,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Kerberos.NET.Asn1;
+using Kerberos.NET.Dns;
 using Kerberos.NET.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +25,7 @@ namespace Kerberos.NET.Transport
         private readonly ILogger logger;
 
         public HttpsKerberosTransport(ILoggerFactory logger = null)
-            : base(logger)
+            : base(logger, HttpsServicePrefix)
         {
             this.logger = logger.CreateLoggerSafe<HttpsKerberosTransport>();
             this.Enabled = true;
@@ -200,5 +202,6 @@ namespace Kerberos.NET.Transport
 
             return uri;
         }
+
     }
 }

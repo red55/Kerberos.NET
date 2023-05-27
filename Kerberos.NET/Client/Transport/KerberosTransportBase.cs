@@ -18,11 +18,15 @@ namespace Kerberos.NET.Transport
 {
     public abstract class KerberosTransportBase : IKerberosTransport, IDisposable
     {
-        private static readonly Random Random = new Random();
+        private static readonly Random Random = new Random ();
 
-        protected KerberosTransportBase(ILoggerFactory logger)
+        protected int KerberosPort  {get;}
+        protected string KerberosServicePrefix { get;}
+
+        protected KerberosTransportBase(ILoggerFactory loggerFactory, string servicePrefix)
         {
-            this.ClientRealmService = new ClientDomainService(logger);
+            KerberosServicePrefix = servicePrefix;
+            this.ClientRealmService = new ClientDomainService(loggerFactory);
         }
 
         private bool disposedValue;
@@ -89,8 +93,8 @@ namespace Kerberos.NET.Transport
         }
 
         protected virtual Task<IEnumerable<DnsRecord>> LocateKdc(string domain, string servicePrefix)
-        {
-            return this.ClientRealmService.LocateKdc(domain, servicePrefix);
+        {            
+            return this.ClientRealmService.LocateKrbServers(domain, servicePrefix);
         }
 
         public abstract Task<T> SendMessage<T>(
@@ -114,10 +118,10 @@ namespace Kerberos.NET.Transport
 
             GC.SuppressFinalize(this);
         }
-
-        protected virtual async Task<DnsRecord> LocatePreferredKdc(string domain, string servicePrefix)
+        
+        protected virtual async Task<DnsRecord> LocatePreferredServer(string domain, string servicePrefix)
         {
-            var results = await this.LocateKdc(domain, servicePrefix);
+            var results = await this.ClientRealmService.LocateKrbServers (domain, servicePrefix); 
 
             results = results.Where(r => r.Name.StartsWith(servicePrefix));
 
@@ -129,11 +133,12 @@ namespace Kerberos.NET.Transport
             {
                 throw new KerberosTransportException($"Cannot locate SRV record for {domain}");
             }
-
+            // TODO: looks like we never get srv record with 0 port
+            /* 
             if (srv.Port <= 0)
             {
                 srv.Port = ClientDomainService.DefaultKerberosPort;
-            }
+            }*/
 
             return srv;
         }

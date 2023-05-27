@@ -19,7 +19,7 @@ namespace Kerberos.NET.Transport
         private readonly Krb5Config config;
 
         public KerberosTransportSelector(IEnumerable<IKerberosTransport> transports, Krb5Config config, ILoggerFactory logger)
-            : base(logger)
+            : base(logger, string.Empty)
         {
             if (transports == null)
             {
