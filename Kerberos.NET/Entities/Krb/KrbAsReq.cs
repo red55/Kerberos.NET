@@ -29,9 +29,19 @@ namespace Kerberos.NET.Entities
 
         public static KrbAsReq CreateAsReq(KerberosCredential credential, AuthenticationOptions options)
         {
+            return CreateAsReq (credential, options, new[] { "krbtgt", credential.Domain });
+        }
+
+        public static KrbAsReq CreateAsReq(KerberosCredential credential, AuthenticationOptions options, string [] serviceName)
+        {
             if (credential == null)
             {
                 throw new ArgumentNullException(nameof(credential));
+            }
+
+            if (serviceName == null)
+            {
+                throw new ArgumentException(nameof(serviceName));
             }
 
             var config = credential.Configuration ?? Krb5Config.Default();
@@ -66,7 +76,7 @@ namespace Kerberos.NET.Entities
                     SName = new KrbPrincipalName
                     {
                         Type = PrincipalNameType.NT_SRV_INST,
-                        Name = new[] { "krbtgt", credential.Domain }
+                        Name = serviceName
                     },
                     Till = CalculateExpirationTime(config)
                 },
