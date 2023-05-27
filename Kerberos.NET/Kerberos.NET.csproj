@@ -34,6 +34,7 @@
     <AsnXml Include="Entities\Krb\KrbEncAsRepPart.xml" />
     <AsnXml Include="Entities\Krb\KrbEncApRepPart.xml" />
     <AsnXml Include="Entities\Krb\KrbEncKdcRepPart.xml" />
+    <AsnXml Include="Entities\Krb\KrbEncPrivPart.xml" />
     <AsnXml Include="Entities\Krb\KrbEncTgsRepPart.xml" />
     <AsnXml Include="Entities\Krb\KrbEncTicketPart.xml" />
     <AsnXml Include="Entities\Krb\KrbError.xml" />
@@ -53,6 +54,7 @@
     <AsnXml Include="Entities\Krb\KrbPaPacRequest.xml" />
     <AsnXml Include="Entities\Krb\KrbPaS4uX509User.xml" />
     <AsnXml Include="Entities\Krb\KrbPrincipalName.xml" />
+    <AsnXml Include="Entities\Krb\KrbPriv.xml" />
     <AsnXml Include="Entities\Krb\KrbS4uUserId.xml" />
     <AsnXml Include="Entities\Krb\KrbTgsReq.xml" />
     <AsnXml Include="Entities\Krb\KrbTgsRep.xml" />
@@ -69,6 +71,7 @@
     <AsnXml Include="Entities\Pkinit\KrbPaPkAsRep.xml" />
     <AsnXml Include="Entities\Pkinit\KrbPKAuthenticator.xml" />
     <AsnXml Include="Entities\Pkinit\KrbSubjectPublicKeyInfo.xml" />
+    <AsnXml Include="Entities\Rfc3244\Rfc3244ChPwData.xml" />
     <AsnXml Include="Entities\SpNego\NegotiationToken.xml" />
     <AsnXml Include="Entities\SpNego\NegTokenInit.xml" />
     <AsnXml Include="Entities\SpNego\NegTokenResp.xml" />

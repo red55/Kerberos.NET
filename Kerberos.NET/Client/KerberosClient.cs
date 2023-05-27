@@ -4,17 +4,22 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security;
 using System.Security.Cryptography.Asn1;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Kerberos.NET.Client.Transport;
 using Kerberos.NET.Configuration;
 using Kerberos.NET.Credentials;
 using Kerberos.NET.Crypto;
 using Kerberos.NET.Entities;
+using Kerberos.NET.Entities.Rfc3244;
 using Kerberos.NET.Transport;
 using Microsoft.Extensions.Logging;
 using static Kerberos.NET.Entities.KerberosConstants;
@@ -51,8 +56,8 @@ namespace Kerberos.NET.Client
 
         private const ApOptions DefaultApOptions = 0;
 
-        private readonly CancellationTokenSource cancellation = new CancellationTokenSource();
-        private readonly object _syncTicketCache = new object();
+        private readonly CancellationTokenSource cancellation = new CancellationTokenSource ();
+        private readonly object _syncTicketCache = new object ();
 
         private readonly KerberosTransportSelector transport;
         private readonly ILoggerFactory loggerFactory;
@@ -70,7 +75,7 @@ namespace Kerberos.NET.Client
         /// <param name="config">The custom configuration this client should use when making Kerberos requests.</param>
         /// <param name="logger">A logger instance for recording client logs</param>
         public KerberosClient(Krb5Config config = null, ILoggerFactory logger = null)
-            : this(config, logger, CreateTransports(logger))
+            : this (config, logger, CreateTransports (logger))
         {
         }
 
@@ -83,13 +88,13 @@ namespace Kerberos.NET.Client
         /// will attempt to use to communicate with the KDC</param>
         public KerberosClient(Krb5Config config = null, ILoggerFactory logger = null, params IKerberosTransport[] transports)
         {
-            this.Configuration = config ?? Krb5ConfigurationSerializer.Deserialize(string.Empty).ToConfigObject();
+            this.Configuration = config ?? Krb5ConfigurationSerializer.Deserialize (string.Empty).ToConfigObject ();
 
             this.loggerFactory = logger;
-            this.logger = logger.CreateLoggerSafe<KerberosClient>();
-            this.clientLoggingScope = this.logger.BeginScope("KerberosClient");
+            this.logger = logger.CreateLoggerSafe<KerberosClient> ();
+            this.clientLoggingScope = this.logger.BeginScope ("KerberosClient");
 
-            this.transport = new KerberosTransportSelector(transports, this.Configuration, logger)
+            this.transport = new KerberosTransportSelector (transports, this.Configuration, logger)
             {
                 ScopeId = this.ScopeId
             };
@@ -126,7 +131,7 @@ namespace Kerberos.NET.Client
         /// Defines the threshold at which tickets are available to be renewed.
         /// A ticket must expire within this time period before it'll be considered.
         /// </summary>
-        public TimeSpan RenewTicketsThreshold { get; set; } = TimeSpan.FromMinutes(15);
+        public TimeSpan RenewTicketsThreshold { get; set; } = TimeSpan.FromMinutes (15);
 
         /// <summary>
         /// Defines how often the cache is polled to check for expiring tickets.
@@ -150,7 +155,7 @@ namespace Kerberos.NET.Client
         {
             get
             {
-                this.SetupCache();
+                this.SetupCache ();
 
                 return this.ticketCache;
             }
@@ -160,18 +165,18 @@ namespace Kerberos.NET.Client
                 {
                     try
                     {
-                        disposable.Dispose();
+                        disposable.Dispose ();
                     }
                     catch (Exception ex)
                     {
-                        this.logger.LogError(ex, "Ticket cache disposal failed");
+                        this.logger.LogError (ex, "Ticket cache disposal failed");
                     }
 
                     this.ticketCache = null;
                     this.cacheSet = false;
                 }
 
-                this.ticketCache = value ?? throw new InvalidOperationException("Cache cannot be null");
+                this.ticketCache = value ?? throw new InvalidOperationException ("Cache cannot be null");
                 this.cacheSet = true;
             }
         }
@@ -235,7 +240,7 @@ namespace Kerberos.NET.Client
         /// </summary>
         public Guid ScopeId
         {
-            get => this.scopeId ?? (this.scopeId = GetRequestActivityId()).Value;
+            get => this.scopeId ?? (this.scopeId = GetRequestActivityId ()).Value;
             set => this.scopeId = value;
         }
 
@@ -245,7 +250,7 @@ namespace Kerberos.NET.Client
             {
                 try
                 {
-                    var tgt = this.CopyTicket($"krbtgt/{this.DefaultDomain}");
+                    var tgt = this.CopyTicket ($"krbtgt/{this.DefaultDomain}");
 
                     return tgt.KdcResponse.CName.FullyQualifiedName;
                 }
@@ -261,9 +266,9 @@ namespace Kerberos.NET.Client
         /// </summary>
         public void ResetConnections()
         {
-            foreach (var t in this.Transports.OfType<KerberosTransportBase>())
+            foreach (var t in this.Transports.OfType<KerberosTransportBase> ())
             {
-                t.ClientRealmService.ResetConnections();
+                t.ClientRealmService.ResetConnections ();
             }
         }
 
@@ -276,19 +281,19 @@ namespace Kerberos.NET.Client
         /// <param name="kdc">The KDC to prioritize.</param>
         public void PinKdc(string realm, string kdc)
         {
-            if (string.IsNullOrWhiteSpace(realm))
+            if (string.IsNullOrWhiteSpace (realm))
             {
-                throw new ArgumentNullException(nameof(realm));
+                throw new ArgumentNullException (nameof (realm));
             }
 
-            if (string.IsNullOrWhiteSpace(kdc))
+            if (string.IsNullOrWhiteSpace (kdc))
             {
-                throw new ArgumentNullException(nameof(kdc));
+                throw new ArgumentNullException (nameof (kdc));
             }
 
-            foreach (var t in this.Transports.OfType<KerberosTransportBase>())
+            foreach (var t in this.Transports.OfType<KerberosTransportBase> ())
             {
-                t.ClientRealmService.PinKdc(realm, kdc);
+                t.ClientRealmService.PinKdc (realm, kdc);
             }
         }
 
@@ -298,14 +303,14 @@ namespace Kerberos.NET.Client
         /// <param name="realm">The realm to remove the pinned addresses.</param>
         public void ClearPinnedKdc(string realm)
         {
-            if (string.IsNullOrWhiteSpace(realm))
+            if (string.IsNullOrWhiteSpace (realm))
             {
-                throw new ArgumentNullException(nameof(realm));
+                throw new ArgumentNullException (nameof (realm));
             }
 
-            foreach (var t in this.Transports.OfType<KerberosTransportBase>())
+            foreach (var t in this.Transports.OfType<KerberosTransportBase> ())
             {
-                t.ClientRealmService.ClearPinnedKdc(realm);
+                t.ClientRealmService.ClearPinnedKdc (realm);
             }
         }
 
@@ -318,10 +323,10 @@ namespace Kerberos.NET.Client
         {
             if (credential == null)
             {
-                throw new ArgumentNullException(nameof(credential));
+                throw new ArgumentNullException (nameof (credential));
             }
 
-            credential.Validate();
+            credential.Validate ();
 
             credential.Configuration = this.Configuration;
 
@@ -352,13 +357,18 @@ namespace Kerberos.NET.Client
                 this.AuthenticationOptions &= ~AuthenticationOptions.IncludePacRequest;
             }
 
-            using (this.logger.BeginRequestScope(this.ScopeId))
+            using (this.logger.BeginRequestScope (this.ScopeId))
             {
-                await this.AuthenticateCredential(credential);
+                await this.AuthenticateCredential (credential);
             }
         }
 
         private async Task AuthenticateCredential(KerberosCredential credential)
+        {
+            await AuthenticateCredential (credential, new[] { "krbtgt", credential.Domain });
+        }
+
+        private async Task AuthenticateCredential(KerberosCredential credential, string[] serviceName)
         {
             int preauthAttempts = 0;
 
@@ -371,7 +381,7 @@ namespace Kerberos.NET.Client
                 {
                     // Authenticate to the KDC and if it succeeds break out of the retry loop
 
-                    await this.RequestTgt(credential).ConfigureAwait(false);
+                    await this.RequestTgt(credential, serviceName).ConfigureAwait(false);
                     succeeded = true;
                     break;
                 }
@@ -482,6 +492,113 @@ namespace Kerberos.NET.Client
             // now we try pre-auth
 
             this.AuthenticationOptions |= AuthenticationOptions.PreAuthenticate;
+        }
+
+        /// <summary>
+        /// Changes password using RFC 3244
+        /// </summary>
+        /// <param name="credential">The credential used to authenticate the user</param>
+        /// <param name="newPassword">The new password</param>
+        /// <param name="cancellation">Cancellation token</param>
+        /// <returns>Awaitable task</returns>
+        public async Task ChangePassword(KerberosCredential credential,  string newPassword, CancellationToken cancellation = default)
+        {
+
+            if (credential == null)
+            {
+                throw new ArgumentNullException(nameof(credential));
+            }
+
+            if (string.IsNullOrEmpty(newPassword))
+            {
+                throw new ArgumentNullException (nameof(newPassword));
+            }
+
+            await AuthenticateCredential (credential, new[] { "kadmin", "changepw"});
+
+            var kdcrep = CopyTicket($"kadmin/changepw");
+
+            var rst = new RequestServiceTicket
+            {
+                CacheTicket = false,
+                KdcOptions = 0,
+                ApOptions = ApOptions.MutualRequired,
+                ServicePrincipalName = $"kadmin/changepw",
+            };
+
+            var ap = KrbApReq.CreateApReq (kdcrep.KdcResponse, kdcrep.SessionKey.AsKey(), rst, out KrbAuthenticator auth);
+            ap.ApOptions = 0;
+
+            var pwChData = new Rfc3244ChPwData
+            {
+                NewPassword = Encoding.UTF8.GetBytes (newPassword), //looks like MS understand UTF8 passwords
+                TargetName = KrbPrincipalName.FromString (principal: credential.UserName, credential.PrincipalNameType, credential.Domain),
+                TargetRealm = credential.Domain
+            };
+
+            var encPrivPart = new KrbEncPrivPart
+            {
+                UserData = pwChData.Encode (),
+                SequenceNumber = auth.SequenceNumber,
+                USec = auth.CuSec,
+            };
+
+            var ud = KrbEncryptedData.Encrypt (encPrivPart.EncodeApplication (), auth.Subkey.AsKey (KeyUsage.EncKrbPrivPart), KeyUsage.EncKrbPrivPart);
+            var krbPriv = new KrbPriv
+            {
+                EncryptedPart = ud,
+            };
+
+            var r = new Rfc3244Req
+            {
+                ApReq = ap,
+                KrbPrivMsg = krbPriv,
+            };
+
+            var encoded = r.Encode ();
+
+            var transportSelector = new KerberosTransportSelector (new[] {
+                        new TcpRfc3244Transport (loggerFactory) as IKerberosTransport,
+                        new TcpKerberosTransport (loggerFactory)
+                    },
+                    Configuration,
+                    loggerFactory);
+
+            var rep = await transportSelector.SendMessage<Rfc3244Rep> (credential.Domain, encoded, cancellation);
+
+            logger.LogDebug ("Rfc3244 reply length {len}", rep.MessageLength);
+
+            var decryptedApRep = new DecryptedKrbApRep (rep.ApRep)
+            {
+                SequenceNumber = auth.SequenceNumber,
+                CuSec = auth.CuSec,
+                CTime = auth.CTime,
+            };
+
+            decryptedApRep.Decrypt (kdcrep.SessionKey.AsKey ());
+
+            logger.LogDebug ("Rfc3244 reply ApReq SequenceNumber {SequenceNumber}", decryptedApRep.SequenceNumber);
+
+
+
+            var decryptedKrbPriv = rep.KrbPrivMsg.EncryptedPart.Decrypt (auth.Subkey.AsKey (), KeyUsage.EncKrbPrivPart, (mem) =>
+            {
+
+                var pp = KrbEncPrivPart.DecodeApplication (mem);
+
+                var e = (KpasswdError) BinaryPrimitives.ReadInt16BigEndian (pp.UserData.Span);
+                if (e != KpasswdError.Success)
+                {
+                    //TODO: decode error message here
+                    throw new KerberosRfc3244Exception (e);
+                }
+
+                return pp;
+            });
+            
+            
+            //transport.SendMessage<>
+
         }
 
         /// <summary>
@@ -1173,7 +1290,12 @@ namespace Kerberos.NET.Client
 
         private async Task RequestTgt(KerberosCredential credential)
         {
-            var asReqMessage = KrbAsReq.CreateAsReq(credential, this.AuthenticationOptions);
+            await RequestTgt (credential, new[] { "krbtgt", credential.Domain });
+        }
+
+        private async Task RequestTgt(KerberosCredential credential, string[] serviceName)
+        {
+            var asReqMessage = KrbAsReq.CreateAsReq(credential, this.AuthenticationOptions, serviceName);
 
             var asReq = asReqMessage.EncodeApplication();
 
