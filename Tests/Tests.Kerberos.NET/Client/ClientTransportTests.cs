@@ -94,7 +94,7 @@ namespace Tests.Kerberos.NET
             {
             }
 
-            protected override Task<DnsRecord> LocatePreferredKdc(string domain, string servicePrefix)
+            protected override Task<DnsRecord> LocatePreferredServer(string domain, string servicePrefix)
             {
                 return Task.FromResult(new DnsRecord { Target = "127.0.0.1", Port = 12345 });
             }
@@ -103,7 +103,7 @@ namespace Tests.Kerberos.NET
         private class NoopTransport : KerberosTransportBase
         {
             public NoopTransport()
-                : base(null)
+                : base(null, string.Empty)
             {
             }
 
@@ -139,6 +139,11 @@ namespace Tests.Kerberos.NET
                 return Task.FromResult(Decode<T>(response));
             }
 
+            protected override Task<DnsRecord> LocatePreferredServer(string domain, string servicePrefix)
+            {
+                throw new NotImplementedException ();
+            }
+
             private class NoopClientRealmService : ClientDomainService
             {
                 public NoopClientRealmService()
@@ -146,7 +151,7 @@ namespace Tests.Kerberos.NET
                 {
                 }
 
-                protected override Task<IEnumerable<DnsRecord>> Query(string domain, string servicePrefix)
+                protected override Task<IEnumerable<DnsRecord>> Query(string domain, string servicePrefix, IEnumerable<string> serverCandidates, int defaultKerberosPort)
                 {
                     return Task.FromResult<IEnumerable<DnsRecord>>(new List<DnsRecord>
                     {

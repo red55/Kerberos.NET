@@ -15,7 +15,7 @@ namespace Tests.Kerberos.NET
         private readonly KdcListener listener;
 
         public InMemoryTransport(KdcListener listener)
-            : base(null)
+            : base(null, string.Empty)
         {
             this.listener = listener;
             this.Enabled = true;
